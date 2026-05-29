@@ -138,39 +138,41 @@ export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
         <span /><span /><span />
       </button>
       <aside className={`sidebar${open ? ' sidebar--open' : ' sidebar--closed'}`}>
-        <div className="sidebar__header">
-          <button className="sidebar__logo-btn" onClick={() => onNavigate('/')}>nota</button>
-        </div>
-        <div className="sidebar__tabs" role="tablist" aria-label="Workspace views">
+        <div className="sidebar__activity" aria-label="Workspace views">
           <button
-            className={`sidebar-tab${currentPath !== '/graph' ? ' active' : ''}`}
-            role="tab"
-            aria-selected={currentPath !== '/graph'}
+            className={`activity-btn${currentPath !== '/graph' ? ' active' : ''}`}
+            type="button"
+            aria-label="Editor"
+            aria-current={currentPath !== '/graph' ? 'page' : undefined}
+            title="Editor"
             onClick={() => onNavigate('/')}
           >
-            <svg className="sidebar-tab__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <svg className="activity-btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M4 2.5h8A1.5 1.5 0 0 1 13.5 4v8A1.5 1.5 0 0 1 12 13.5H4A1.5 1.5 0 0 1 2.5 12V4A1.5 1.5 0 0 1 4 2.5Z" stroke="currentColor" strokeWidth="1.2"/>
               <path d="M5.25 6h5.5M5.25 8.25h5.5M5.25 10.5h3.25" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
             </svg>
-            <span>Editor</span>
           </button>
           <button
-            className={`sidebar-tab${currentPath === '/graph' ? ' active' : ''}`}
-            role="tab"
-            aria-selected={currentPath === '/graph'}
+            className={`activity-btn${currentPath === '/graph' ? ' active' : ''}`}
+            type="button"
+            aria-label="Graph"
+            aria-current={currentPath === '/graph' ? 'page' : undefined}
+            title="Graph"
             onClick={() => {
               onNavigate('/graph');
               setSidebarOpen(false);
             }}
           >
-            <svg className="sidebar-tab__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <svg className="activity-btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <circle cx="4" cy="5" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
               <circle cx="11.5" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
               <circle cx="9" cy="11.5" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
               <path d="M5.7 4.65 9.8 4.25M4.95 6.5 7.9 10.25M10.55 5.65 9.75 9.75" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
             </svg>
-            <span>Graph</span>
           </button>
+        </div>
+        <div className="sidebar__header">
+          <button className="sidebar__logo-btn" onClick={() => onNavigate('/')}>nota</button>
         </div>
         <div className="sidebar__actions">
           <button className="action-btn note-btn" onClick={() => { createNote(); onNavigate('/'); }}>+ Note</button>
