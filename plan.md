@@ -1,1 +1,0 @@
-In the graph view, display the note as is and the group as a larger circle. If the note mentions the group, connect the group and the note with an arrow; if the note belongs to a group but does not mention it, represent the group as a larger circle and draw the note inside the group circle.
