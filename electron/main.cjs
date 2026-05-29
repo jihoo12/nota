@@ -113,11 +113,49 @@ async function uniqueDirectoryName(parentFolderPath, preferredName, usedFolderNa
   }
 }
 
+async function pruneMarkdownGroupFolder(folderPath, notes, childGroups) {
+  let entries;
+
+  try {
+    entries = await fs.readdir(folderPath, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  const keptFileNames = new Set(
+    notes
+      .map(note => typeof note.fileName === 'string' && note.fileName.trim() ? path.basename(note.fileName).toLowerCase() : null)
+      .filter(Boolean)
+  );
+  const keptFolderNames = new Set(
+    childGroups
+      .map(group => typeof group.folderName === 'string' && group.folderName.trim() ? path.basename(group.folderName).toLowerCase() : null)
+      .filter(Boolean)
+  );
+
+  await Promise.all(entries.map(async (entry) => {
+    const entryPath = path.join(folderPath, entry.name);
+    const lowerName = entry.name.toLowerCase();
+
+    if (entry.isFile() && isMarkdownFile(entry.name) && !keptFileNames.has(lowerName)) {
+      await fs.unlink(entryPath);
+      return;
+    }
+
+    if (entry.isDirectory() && !entry.name.startsWith('.') && !keptFolderNames.has(lowerName)) {
+      await fs.rm(entryPath, { recursive: true, force: true });
+    }
+  }));
+}
+
 async function saveMarkdownGroup(folderPath, group, groupByParentId, notesByGroupId, savedNotes, savedGroups) {
   await fs.mkdir(folderPath, { recursive: true });
 
   const usedFileNames = new Set();
   const notes = notesByGroupId.get(group.id) ?? [];
+  const childGroups = groupByParentId.get(group.id) ?? [];
+
+  await pruneMarkdownGroupFolder(folderPath, notes, childGroups);
 
   for (const note of notes) {
     const id = typeof note?.id === 'string' ? note.id : null;
@@ -143,7 +181,6 @@ async function saveMarkdownGroup(folderPath, group, groupByParentId, notesByGrou
   }
 
   const usedFolderNames = new Set();
-  const childGroups = groupByParentId.get(group.id) ?? [];
 
   for (const childGroup of childGroups) {
     const existingFolderName = typeof childGroup.folderName === 'string' && childGroup.folderName.trim()
