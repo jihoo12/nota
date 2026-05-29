@@ -120,3 +120,42 @@
 }
 .sidebar__item:hover .sidebar__item-del { display: block; }
 .sidebar__item-del:hover { color: #e05555; }
+
+/* ── Section 2 additions ── */
+.sidebar__actions{display:flex;gap:6px;padding:10px 10px 6px}
+.action-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.action-btn.note-btn{background:var(--accent);color:var(--accent-fg)}
+.action-btn.group-btn{background:var(--hover);color:var(--text-sec);border:1px solid var(--border)}
+.action-btn:hover{opacity:.82}
+
+.tree-group{margin-bottom:1px}
+.group-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background .12s;user-select:none}
+.group-row:hover{background:var(--hover)}
+.group-row.drag-over{background:var(--drag-over,#1f2530);outline:1px dashed var(--group-color,#6b9ec4)}
+.group-caret{flex-shrink:0;width:14px;height:14px;color:var(--text-muted);transition:transform .18s}
+.group-caret.open{transform:rotate(90deg)}
+.group-icon{flex-shrink:0;color:#6b9ec4}
+.group-name{font-size:13px;color:var(--text-sec);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.group-row:hover .group-name{color:var(--text)}
+.group-actions{display:none;gap:2px;align-items:center}
+.group-row:hover .group-actions{display:flex}
+.g-action{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:3px;line-height:1}
+.g-action:hover{color:var(--text);background:var(--active)}
+.group-children{padding-left:18px;overflow:hidden}
+
+.note-row{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background .12s;position:relative;user-select:none}
+.note-row:hover{background:var(--hover)}
+.note-row.active{background:var(--active)}
+.note-row.dragging{opacity:.4}
+.note-icon{flex-shrink:0;color:var(--text-muted)}
+.note-row.active .note-icon{color:var(--accent)}
+.note-title{font-size:13px;color:var(--text-sec);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-row.active .note-title{color:var(--text)}
+.note-del{display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.note-row:hover .note-del{display:block}
+.note-del:hover{color:#e05555}
+
+.root-drop{font-size:11px;color:var(--text-muted);padding:6px 10px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em;margin-top:4px;border-radius:6px}
+.root-drop.drag-over{background:var(--drag-over,#1f2530);color:var(--accent)}
+
+.inline-input{background:var(--active);border:1px solid var(--accent);border-radius:4px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:2px 6px;outline:none;width:100%}
