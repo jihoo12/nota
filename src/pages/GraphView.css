@@ -1,7 +1,7 @@
 .graph-view {
   flex: 1;
-  padding: 44px 48px 48px;
   min-width: 0;
+  min-height: 100vh;
 }
 
 .graph-view__header {
@@ -9,7 +9,16 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 28px;
+  padding: 44px 48px 18px;
+  position: relative;
+  z-index: 2;
+}
+
+.graph-view__header-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .graph-view__eyebrow {
@@ -36,7 +45,8 @@
 }
 
 .graph-view__stats span {
-  border: 1px solid var(--border);
+  background: rgba(20,20,23,0.78);
+  border: 1px solid rgba(232,230,223,0.09);
   border-radius: 6px;
   color: var(--text-secondary);
   font-family: 'DM Sans', sans-serif;
@@ -44,43 +54,95 @@
   padding: 6px 9px;
 }
 
+.graph-view__zoom {
+  align-items: center;
+  background: rgba(20,20,23,0.78);
+  border: 1px solid rgba(232,230,223,0.09);
+  border-radius: 8px;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+}
+
+.graph-view__zoom button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 28px;
+  min-width: 30px;
+  padding: 5px 8px;
+}
+
+.graph-view__zoom button:hover {
+  background: var(--active);
+  color: var(--text);
+}
+
+.graph-view__zoom span {
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  min-width: 44px;
+  text-align: center;
+}
+
 .graph-view__empty {
-  border: 1px dashed var(--border);
+  border: 1px dashed rgba(232,230,223,0.13);
   border-radius: 8px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 360px;
+  margin: 44px 48px;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
+  position: relative;
+  z-index: 1;
 }
 
 .graph-canvas {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  min-height: 560px;
+  min-height: 100vh;
   overflow: auto;
   background:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    radial-gradient(circle at 24px 24px, rgba(196,169,107,0.07) 1px, transparent 1.5px);
   background-size: 32px 32px;
+  position: relative;
+}
+
+.graph-canvas__surface {
+  cursor: grab;
+  min-height: calc(100vh - 145px);
+  overflow: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.graph-canvas__surface--panning {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .graph-canvas__svg {
   display: block;
   min-width: 900px;
   width: 100%;
-  height: 560px;
+  min-height: calc(100vh - 145px);
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .graph-edge {
-  stroke-width: 1.5;
+  stroke-width: 1.8;
   stroke-linecap: round;
-}
-
-.graph-edge--contains {
-  stroke: rgba(107,158,196,0.58);
+  opacity: .9;
 }
 
 .graph-edge--mentions {
@@ -116,11 +178,23 @@
 }
 
 .graph-node--group circle {
-  fill: rgba(107,158,196,0.12);
+  fill: rgba(107,158,196,0.09);
+  stroke: rgba(107,158,196,0.42);
+  stroke-width: 1.6;
+}
+
+.graph-node--nested-group circle {
+  fill: rgba(107,158,196,0.14);
+  stroke: rgba(107,158,196,0.58);
 }
 
 .graph-node--note circle {
   fill: rgba(196,169,107,0.10);
+}
+
+.graph-node--nested circle {
+  fill: rgba(15,15,17,0.72);
+  stroke: rgba(196,169,107,0.45);
 }
 
 .graph-node__kind {
@@ -138,17 +212,28 @@
   text-anchor: middle;
 }
 
-@media (max-width: 720px) {
-  .graph-view {
-    padding: 36px 18px 28px;
-  }
+.graph-node__label--group {
+  fill: #b9d4e9;
+  font-size: 13px;
+  font-weight: 600;
+}
 
+@media (max-width: 720px) {
   .graph-view__header {
     align-items: flex-start;
     flex-direction: column;
+    padding: 36px 18px 18px;
+  }
+
+  .graph-view__header-actions {
+    align-items: flex-start;
   }
 
   .graph-view__title {
     font-size: 34px;
+  }
+
+  .graph-view__empty {
+    margin: 28px 18px;
   }
 }

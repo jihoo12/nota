@@ -1,4 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import katex from 'katex';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-clike';
+import 'prismjs/components/prism-markup';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/components/prism-markdown';
+import 'katex/dist/katex.min.css';
 import { useStore } from '../store/useStore';
 import { createMention, MentionKind, parseMentionToken, splitMentionText } from '../utils/mentions';
 import './NoteEditor.css';
@@ -7,6 +22,112 @@ interface MentionSuggestion {
   id: string;
   kind: MentionKind;
   label: string;
+}
+
+type PreviewPart =
+  | { kind: 'text'; value: string }
+  | { kind: 'code'; value: string; language: string };
+
+type MathPart =
+  | { kind: 'text'; value: string }
+  | { kind: 'math'; value: string; display: boolean };
+
+function splitCodeBlocks(text: string): PreviewPart[] {
+  const parts: PreviewPart[] = [];
+  const codeBlockPattern = /```([A-Za-z0-9_-]*)[ \t]*\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(codeBlockPattern)) {
+    if (match.index > lastIndex) {
+      parts.push({ kind: 'text', value: text.slice(lastIndex, match.index) });
+    }
+
+    parts.push({
+      kind: 'code',
+      language: match[1].trim().toLowerCase(),
+      value: match[2].replace(/\n$/, ''),
+    });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ kind: 'text', value: text.slice(lastIndex) });
+  }
+
+  return parts;
+}
+
+function splitMathText(text: string): MathPart[] {
+  const parts: MathPart[] = [];
+  let index = 0;
+
+  while (index < text.length) {
+    const displayStart = text.indexOf('$$', index);
+    const inlineStart = text.indexOf('$', index);
+    const start = displayStart === -1
+      ? inlineStart
+      : inlineStart === -1
+        ? displayStart
+        : Math.min(displayStart, inlineStart);
+
+    if (start === -1) {
+      parts.push({ kind: 'text', value: text.slice(index) });
+      break;
+    }
+
+    if (start > index) {
+      parts.push({ kind: 'text', value: text.slice(index, start) });
+    }
+
+    const isDisplay = text.startsWith('$$', start);
+    const delimiter = isDisplay ? '$$' : '$';
+    const contentStart = start + delimiter.length;
+    const end = text.indexOf(delimiter, contentStart);
+
+    if (end === -1) {
+      parts.push({ kind: 'text', value: text.slice(start) });
+      break;
+    }
+
+    const value = text.slice(contentStart, end);
+    if (value.trim()) {
+      parts.push({ kind: 'math', value, display: isDisplay });
+    } else {
+      parts.push({ kind: 'text', value: text.slice(start, end + delimiter.length) });
+    }
+    index = end + delimiter.length;
+  }
+
+  return parts;
+}
+
+function renderLatex(latex: string, displayMode: boolean) {
+  try {
+    return katex.renderToString(latex, {
+      displayMode,
+      throwOnError: false,
+      strict: false,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLanguage(language: string) {
+  const aliases: Record<string, string> = {
+    js: 'javascript',
+    py: 'python',
+    sh: 'bash',
+    shell: 'bash',
+    ts: 'typescript',
+  };
+  return aliases[language] ?? language;
+}
+
+function highlightCode(code: string, language: string) {
+  const normalizedLanguage = normalizeLanguage(language);
+  const grammar = Prism.languages[normalizedLanguage] ?? Prism.languages.markup;
+  return Prism.highlight(code, grammar, normalizedLanguage || 'markup');
 }
 
 export function NoteEditor() {
@@ -21,6 +142,7 @@ export function NoteEditor() {
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionPos, setMentionPos] = useState({ top: 0, left: 0 });
   const [mentionCursor, setMentionCursor] = useState(0);
+  const [previewMode, setPreviewMode] = useState(false);
 
   const suggestions: MentionSuggestion[] = mentionOpen
     ? [
@@ -102,25 +224,63 @@ export function NoteEditor() {
 
   if (!note) return null;
 
-  // Render content with highlighted [[mentions]]
+  // Render content with highlighted [[mentions]], KaTeX math, and Prism code blocks.
   const renderContent = (text: string) => {
-    return splitMentionText(text).map((part, i) => {
+    return splitMentionText(text).flatMap((part, i) => {
       const mention = parseMentionToken(part);
       if (mention) {
-        return (
-          <mark key={i} className={`mention-chip mention-chip--${mention.kind}`}>
+        return [
+          <mark key={`mention-${i}`} className={`mention-chip mention-chip--${mention.kind}`}>
             {mention.kind}:{mention.label}
-          </mark>
-        );
+          </mark>,
+        ];
       }
-      return part;
+
+      return splitCodeBlocks(part).flatMap((codePart, j) => {
+        if (codePart.kind === 'code') {
+          const language = normalizeLanguage(codePart.language);
+
+          return [
+            <pre key={`code-${i}-${j}`} className="code-block">
+              <code
+                className={`language-${language || 'text'}`}
+                dangerouslySetInnerHTML={{ __html: highlightCode(codePart.value, language) }}
+              />
+            </pre>,
+          ];
+        }
+
+        return splitMathText(codePart.value).map((mathPart, k) => {
+          if (mathPart.kind === 'text') return mathPart.value;
+
+          const html = renderLatex(mathPart.value, mathPart.display);
+          if (!html) return `${mathPart.display ? '$$' : '$'}${mathPart.value}${mathPart.display ? '$$' : '$'}`;
+
+          return (
+            <span
+              key={`math-${i}-${j}-${k}`}
+              className={mathPart.display ? 'math math--display' : 'math math--inline'}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          );
+        });
+      });
     });
   };
 
   return (
     <div className="editor">
-      <div className="editor__meta">
-        {new Date(note.updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
+      <div className="editor__topbar">
+        <div className="editor__meta">
+          {new Date(note.updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </div>
+        <button
+          className={`editor__preview-toggle${previewMode ? ' editor__preview-toggle--active' : ''}`}
+          type="button"
+          onClick={() => setPreviewMode(isPreview => !isPreview)}
+        >
+          {previewMode ? 'Edit' : 'Preview'}
+        </button>
       </div>
 
       <input
@@ -133,19 +293,26 @@ export function NoteEditor() {
       />
 
       <div className="editor__body">
-        <textarea
-          ref={contentRef}
-          className="editor__textarea"
-          value={note.content}
-          onChange={handleContentChange}
-          onKeyDown={handleContentKeyDown}
-          placeholder={"Start writing...\n\nType @ to mention a note or group."}
-          spellCheck={false}
-        />
-        <div className="editor__preview" aria-hidden="true">{renderContent(note.content)}</div>
+        {previewMode ? (
+          <div className="editor__preview editor__preview--main">
+            {note.content.trim() ? renderContent(note.content) : (
+              <span className="editor__preview-placeholder">Nothing to preview yet.</span>
+            )}
+          </div>
+        ) : (
+          <textarea
+            ref={contentRef}
+            className="editor__textarea"
+            value={note.content}
+            onChange={handleContentChange}
+            onKeyDown={handleContentKeyDown}
+            placeholder={"Start writing...\n\nType @ to mention a note or group."}
+            spellCheck={false}
+          />
+        )}
 
         {/* Mention dropdown */}
-        {mentionOpen && suggestions.length > 0 && (
+        {!previewMode && mentionOpen && suggestions.length > 0 && (
           <div
             className="mention-dropdown"
             style={{ top: mentionPos.top, left: mentionPos.left }}

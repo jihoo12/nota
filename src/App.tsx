@@ -7,15 +7,22 @@ import { GraphView } from './pages/GraphView';
 import './App.css';
 
 export default function App() {
-  const { activeNoteId, setActiveNote } = useStore();
+  const { notes, activeNoteId, setActiveNote } = useStore();
   const [path, setPath] = useState(window.location.pathname);
   const isGraph = path === '/graph';
+  const hasActiveNote = activeNoteId ? notes.some(note => note.id === activeNoteId) : false;
 
   useEffect(() => {
     const handlePopState = () => setPath(window.location.pathname);
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (activeNoteId && !hasActiveNote) {
+      setActiveNote(null);
+    }
+  }, [activeNoteId, hasActiveNote, setActiveNote]);
 
   const navigate = (nextPath: string) => {
     if (window.location.pathname !== nextPath) {
@@ -33,7 +40,7 @@ export default function App() {
     <div className="app">
       <Sidebar currentPath={path} onNavigate={navigate} />
       <main className="app__main">
-        {isGraph ? <GraphView onOpenNote={openNote} /> : activeNoteId ? <NoteEditor /> : <WelcomePage />}
+        {isGraph ? <GraphView onOpenNote={openNote} /> : hasActiveNote ? <NoteEditor /> : <WelcomePage />}
       </main>
     </div>
   );

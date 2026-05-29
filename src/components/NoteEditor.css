@@ -9,13 +9,39 @@
   position: relative;
 }
 
+.editor__topbar {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
 .editor__meta {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--text-muted);
   letter-spacing: .06em;
   text-transform: uppercase;
-  margin-bottom: 20px;
+}
+
+.editor__preview-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+.editor__preview-toggle:hover,
+.editor__preview-toggle--active {
+  background: var(--active);
+  border-color: rgba(196,169,107,0.45);
+  color: var(--text);
 }
 
 .editor__title {
@@ -56,15 +82,21 @@
 .editor__textarea::placeholder { color: var(--text-muted); }
 
 .editor__preview {
-  border-top: 1px solid var(--border);
   color: var(--text-secondary);
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   line-height: 1.7;
-  margin-top: 28px;
   min-height: 48px;
-  padding-top: 18px;
   white-space: pre-wrap;
+}
+
+.editor__preview--main {
+  min-height: 400px;
+  padding-bottom: 48px;
+}
+
+.editor__preview-placeholder {
+  color: var(--text-muted);
 }
 
 .mention-chip {
@@ -78,6 +110,98 @@
 .mention-chip--group {
   background: rgba(107,158,196,0.16);
   color: #8cb9dc;
+}
+
+.math {
+  color: var(--text);
+}
+
+.math--inline {
+  display: inline-block;
+  margin: 0 2px;
+  vertical-align: -0.08em;
+}
+
+.math--display {
+  display: block;
+  margin: 14px 0;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.math--display .katex-display {
+  margin: 0;
+}
+
+.code-block {
+  background: rgba(20,20,23,0.86);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 14px 0;
+  overflow-x: auto;
+  padding: 14px 16px;
+  white-space: pre;
+}
+
+.code-block code {
+  font-family: inherit;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--text-muted);
+}
+
+.token.punctuation {
+  color: #8c8a84;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #d6927a;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #9bc58f;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.token.variable {
+  color: #c4a96b;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.function,
+.token.class-name {
+  color: #8cb9dc;
+}
+
+.token.keyword {
+  color: #c79bdc;
+}
+
+.token.regex,
+.token.important {
+  color: #e1bd6b;
 }
 
 .mention-dropdown {
