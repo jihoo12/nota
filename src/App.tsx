@@ -6,16 +6,39 @@ import { WelcomePage } from './pages/WelcomePage';
 import { GraphView } from './pages/GraphView';
 import './App.css';
 
+const isFileProtocol = window.location.protocol === 'file:';
+
+function getCurrentPath() {
+  if (isFileProtocol) {
+    return window.location.hash.replace(/^#/, '') || '/';
+  }
+
+  return window.location.pathname;
+}
+
 export default function App() {
-  const { notes, activeNoteId, setActiveNote } = useStore();
-  const [path, setPath] = useState(window.location.pathname);
+  const {
+    notes,
+    groups,
+    activeNoteId,
+    openedGroupId,
+    openedFolderPath,
+    setActiveNote,
+    setGroupFolderNames,
+    setNoteFileNames,
+  } = useStore();
+  const [path, setPath] = useState(getCurrentPath);
   const isGraph = path === '/graph';
   const hasActiveNote = activeNoteId ? notes.some(note => note.id === activeNoteId) : false;
 
   useEffect(() => {
-    const handlePopState = () => setPath(window.location.pathname);
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    const handleLocationChange = () => setPath(getCurrentPath());
+    window.addEventListener('hashchange', handleLocationChange);
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener('popstate', handleLocationChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -24,10 +47,70 @@ export default function App() {
     }
   }, [activeNoteId, hasActiveNote, setActiveNote]);
 
+  useEffect(() => {
+    const getGroupIds = (rootGroupId: string) => {
+      const groupIds = new Set<string>();
+      const collect = (groupId: string) => {
+        groupIds.add(groupId);
+        groups.filter(group => group.parentGroupId === groupId).forEach(group => collect(group.id));
+      };
+
+      collect(rootGroupId);
+      return groupIds;
+    };
+
+    const handleSave = async (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 's' || (!event.metaKey && !event.ctrlKey) || event.altKey) return;
+
+      event.preventDefault();
+
+      if (!window.nota?.saveMarkdownDirectory || !openedGroupId || !openedFolderPath) return;
+
+      const groupIds = getGroupIds(openedGroupId);
+      const result = await window.nota.saveMarkdownDirectory({
+        folderPath: openedFolderPath,
+        rootGroupId: openedGroupId,
+        groups: groups
+          .filter(group => groupIds.has(group.id))
+          .map(group => ({
+            id: group.id,
+            name: group.name,
+            folderName: group.folderName,
+            parentGroupId: group.parentGroupId,
+          })),
+        notes: notes
+          .filter(note => groupIds.has(note.groupId ?? ''))
+          .map(note => ({
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            fileName: note.fileName,
+            groupId: note.groupId,
+          })),
+      });
+
+      if (!result.canceled && result.savedNotes) {
+        setNoteFileNames(result.savedNotes);
+      }
+
+      if (!result.canceled && result.savedGroups) {
+        setGroupFolderNames(result.savedGroups);
+      }
+    };
+
+    window.addEventListener('keydown', handleSave);
+    return () => window.removeEventListener('keydown', handleSave);
+  }, [groups, notes, openedFolderPath, openedGroupId, setGroupFolderNames, setNoteFileNames]);
+
   const navigate = (nextPath: string) => {
-    if (window.location.pathname !== nextPath) {
+    if (isFileProtocol) {
+      if (getCurrentPath() !== nextPath) {
+        window.location.hash = nextPath;
+      }
+    } else if (window.location.pathname !== nextPath) {
       window.history.pushState(null, '', nextPath);
     }
+
     setPath(nextPath);
   };
 

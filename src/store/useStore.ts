@@ -2,24 +2,57 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Note, Group } from '../types';
 
+export interface MarkdownNoteImport {
+  title: string;
+  content: string;
+  fileName: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface MarkdownGroupImport {
+  name: string;
+  folderName: string;
+  notes: MarkdownNoteImport[];
+  groups: MarkdownGroupImport[];
+}
+
 interface Store {
   notes: Note[];
   groups: Group[];
   activeNoteId: string | null;
+  openedGroupId: string | null;
+  openedFolderPath: string | null;
 
   createNote: (groupId?: string | null) => string;
   updateNote: (id: string, patch: Partial<Pick<Note, 'title' | 'content'>>) => void;
   deleteNote: (id: string) => void;
   setActiveNote: (id: string | null) => void;
   moveNote: (noteId: string, groupId: string | null) => void;
+  setNoteFileNames: (fileNames: Array<{ id: string; fileName: string }>) => void;
+  setGroupFolderNames: (folderNames: Array<{ id: string; folderName: string }>) => void;
 
   createGroup: (name: string, parentGroupId?: string | null) => string;
   deleteGroup: (id: string) => void;
   renameGroup: (id: string, name: string) => void;
   moveGroup: (groupId: string, newParentId: string | null) => void;
+
+  openMarkdownGroup: (folderPath: string, importedGroup: MarkdownGroupImport) => void;
+  closeMarkdownGroup: () => void;
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+function collectGroupIds(groups: Group[], rootId: string) {
+  const ids = new Set<string>();
+  const collect = (groupId: string) => {
+    ids.add(groupId);
+    groups.filter(group => group.parentGroupId === groupId).forEach(group => collect(group.id));
+  };
+
+  collect(rootId);
+  return ids;
+}
 
 export const useStore = create<Store>()(
   persist(
@@ -27,6 +60,8 @@ export const useStore = create<Store>()(
       notes: [],
       groups: [],
       activeNoteId: null,
+      openedGroupId: null,
+      openedFolderPath: null,
 
       createNote: (groupId = null) => {
         const id = uid();
@@ -38,6 +73,22 @@ export const useStore = create<Store>()(
       deleteNote: (id) => set(s => ({ notes: s.notes.filter(n => n.id !== id), activeNoteId: s.activeNoteId === id ? null : s.activeNoteId })),
       setActiveNote: (id) => set({ activeNoteId: id }),
       moveNote: (noteId, groupId) => set(s => ({ notes: s.notes.map(n => n.id === noteId ? { ...n, groupId } : n) })),
+      setNoteFileNames: (fileNames) => set(s => {
+        const fileNameById = new Map(fileNames.map(item => [item.id, item.fileName]));
+        return {
+          notes: s.notes.map(note => fileNameById.has(note.id)
+            ? { ...note, fileName: fileNameById.get(note.id) }
+            : note),
+        };
+      }),
+      setGroupFolderNames: (folderNames) => set(s => {
+        const folderNameById = new Map(folderNames.map(item => [item.id, item.folderName]));
+        return {
+          groups: s.groups.map(group => folderNameById.has(group.id)
+            ? { ...group, folderName: folderNameById.get(group.id) }
+            : group),
+        };
+      }),
 
       createGroup: (name, parentGroupId = null) => {
         const id = uid();
@@ -59,6 +110,71 @@ export const useStore = create<Store>()(
         };
         if (groupId === newParentId || (newParentId && isDescendant(newParentId, groupId))) return s;
         return { groups: s.groups.map(g => g.id === groupId ? { ...g, parentGroupId: newParentId ?? null } : g) };
+      }),
+
+      openMarkdownGroup: (folderPath, importedGroup) => set(s => {
+        const openedGroupIds = s.openedGroupId ? collectGroupIds(s.groups, s.openedGroupId) : new Set<string>();
+        const now = Date.now();
+        const importedGroups: Group[] = [];
+        const importedNotes: Note[] = [];
+
+        const importGroup = (group: MarkdownGroupImport, parentGroupId: string | null) => {
+          const groupId = uid();
+          importedGroups.push({
+            id: groupId,
+            name: group.name,
+            folderName: group.folderName,
+            sourceFolderPath: parentGroupId === null ? folderPath : undefined,
+            parentGroupId,
+            createdAt: now,
+          });
+          group.notes.forEach(importedNote => {
+            importedNotes.push({
+              id: uid(),
+              title: importedNote.title || 'Untitled',
+              content: importedNote.content,
+              fileName: importedNote.fileName,
+              createdAt: importedNote.createdAt ?? now,
+              updatedAt: importedNote.updatedAt ?? now,
+              groupId,
+            });
+          });
+          group.groups.forEach(childGroup => importGroup(childGroup, groupId));
+          return groupId;
+        };
+
+        const groupId = importGroup(importedGroup, null);
+
+        return {
+          groups: [
+            ...s.groups.filter(group => !openedGroupIds.has(group.id)),
+            ...importedGroups,
+          ],
+          notes: [
+            ...s.notes.filter(note => !openedGroupIds.has(note.groupId ?? '')),
+            ...importedNotes,
+          ],
+          activeNoteId: importedNotes[0]?.id ?? null,
+          openedGroupId: groupId,
+          openedFolderPath: folderPath,
+        };
+      }),
+
+      closeMarkdownGroup: () => set(s => {
+        if (!s.openedGroupId) return s;
+
+        const openedGroupIds = collectGroupIds(s.groups, s.openedGroupId);
+        const activeNoteIsOpen = s.activeNoteId
+          ? s.notes.some(note => note.id === s.activeNoteId && openedGroupIds.has(note.groupId ?? ''))
+          : false;
+
+        return {
+          groups: s.groups.filter(group => !openedGroupIds.has(group.id)),
+          notes: s.notes.filter(note => !openedGroupIds.has(note.groupId ?? '')),
+          activeNoteId: activeNoteIsOpen ? null : s.activeNoteId,
+          openedGroupId: null,
+          openedFolderPath: null,
+        };
       }),
     }),
     { name: 'nota-storage' }

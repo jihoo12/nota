@@ -203,6 +203,8 @@
 .action-btn.note-btn{background:var(--accent);color:var(--accent-fg)}
 .action-btn.group-btn{background:var(--hover);color:var(--text-secondary);border:1px solid var(--border)}
 .action-btn:hover{opacity:.82}
+.action-btn:disabled{cursor:default;opacity:.45}
+.action-btn--error{border-color:rgba(224,85,85,.45)!important;color:#e05555!important}
 
 .tree-group{margin-bottom:1px}
 .group-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background .12s;user-select:none}

@@ -106,10 +106,19 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
-  const { notes, groups, activeNoteId, createNote, createGroup, moveNote, moveGroup } = useStore();
+  const {
+    notes,
+    groups,
+    activeNoteId,
+    openedGroupId,
+    createNote,
+    closeMarkdownGroup,
+    openMarkdownGroup,
+    moveNote,
+    moveGroup,
+  } = useStore();
   const [open, setSidebarOpen] = useState(true);
-  const [showGroupInput, setShowGroupInput] = useState(false);
-  const [groupName, setGroupName] = useState('');
+  const [groupActionStatus, setGroupActionStatus] = useState<'idle' | 'opening' | 'error'>('idle');
   const [dragState, setDragState] = useState<DragState>(null);
 
   const rootGroups = groups.filter(g => g.parentGroupId === null);
@@ -131,6 +140,29 @@ export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleOpenGroup = async () => {
+    if (!window.nota?.openMarkdownDirectory || groupActionStatus === 'opening') return;
+
+    setGroupActionStatus('opening');
+
+    try {
+      const result = await window.nota.openMarkdownDirectory();
+      if (!result.canceled && result.folderPath && result.group) {
+        openMarkdownGroup(result.folderPath, result.group);
+        onNavigate('/');
+      }
+      setGroupActionStatus('idle');
+    } catch {
+      setGroupActionStatus('error');
+      window.setTimeout(() => setGroupActionStatus('idle'), 1800);
+    }
+  };
+
+  const handleCloseGroup = () => {
+    closeMarkdownGroup();
+    onNavigate('/');
+  };
 
   return (
     <>
@@ -175,17 +207,25 @@ export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
           <button className="sidebar__logo-btn" onClick={() => onNavigate('/')}>nota</button>
         </div>
         <div className="sidebar__actions">
-          <button className="action-btn note-btn" onClick={() => { createNote(); onNavigate('/'); }}>+ Note</button>
-          <button className="action-btn group-btn" onClick={() => setShowGroupInput(true)}>+ Group</button>
+          <button className="action-btn note-btn" onClick={() => { createNote(openedGroupId ?? null); onNavigate('/'); }}>+ Note</button>
+          <button
+            className={`action-btn group-btn${groupActionStatus === 'error' ? ' action-btn--error' : ''}`}
+            disabled={!window.nota?.openMarkdownDirectory || groupActionStatus === 'opening'}
+            onClick={handleOpenGroup}
+            title="Open a directory as a group"
+          >
+            {groupActionStatus === 'opening' ? 'Opening' : groupActionStatus === 'error' ? 'Failed' : 'Open'}
+          </button>
+          <button
+            className="action-btn group-btn"
+            disabled={!openedGroupId}
+            onClick={handleCloseGroup}
+            title="Close the opened group"
+          >
+            Close
+          </button>
         </div>
         <nav className="sidebar__nav">
-          {showGroupInput && (
-            <div style={{ padding: '4px 8px 8px' }}>
-              <input className="inline-input" placeholder="Group name" autoFocus value={groupName} onChange={e => setGroupName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && groupName.trim()) { createGroup(groupName.trim()); setGroupName(''); setShowGroupInput(false); } if (e.key === 'Escape') setShowGroupInput(false); }}
-                onBlur={() => setShowGroupInput(false)} />
-            </div>
-          )}
           {rootGroups.map(g => <GroupTree key={g.id} groupId={g.id} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
           {rootNotes.map(note => <NoteRow key={note.id} note={note} activeNoteId={activeNoteId} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
           {(rootGroups.length > 0 || rootNotes.length > 0) && (

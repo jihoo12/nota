@@ -11,6 +11,8 @@ Nota is a local-first note app for writing connected notes, organizing them into
 - Preview fenced code blocks with Prism.js syntax highlighting.
 - Explore notes and groups in a graph view.
 - Zoom and pan the graph canvas.
+- Open a directory as a group, with Markdown files imported as notes and subdirectories imported as subgroups.
+- Save the opened group back to Markdown files and subgroup directories with Ctrl/Cmd + S.
 - Toggle the sidebar with the hamburger button or `Tab`.
 
 ## Preview Syntax
@@ -65,16 +67,29 @@ Install dependencies:
 npm install
 ```
 
-Run the development server:
+Run the desktop app in development mode:
 
 ```bash
 npm run dev
+```
+
+Run only the browser development server:
+
+```bash
+npm run dev:web
 ```
 
 Build for production:
 
 ```bash
 npm run build
+```
+
+Run the production build in Electron:
+
+```bash
+npm run build
+npm start
 ```
 
 Preview the production build:
@@ -91,17 +106,18 @@ This repository includes `shell.nix` with Node.js and npm. If you use Nix, enter
 nix-shell
 ```
 
-Then run the normal npm commands.
+The shell also provides Electron through Nix and points the npm Electron wrapper at that binary. Then run the normal npm commands.
 
 ## Tech Stack
 
 - React
 - TypeScript
 - Vite
+- Electron
 - Zustand
 - KaTeX
 - Prism.js
 
 ## Data Storage
 
-Notes, groups, and UI state are persisted in browser local storage under the Zustand storage key `nota-storage`.
+Notes, groups, and UI state are persisted in browser local storage under the Zustand storage key `nota-storage`. In the desktop app, an opened directory is treated as a group, subdirectories are treated as subgroups, and Ctrl/Cmd + S writes note content back as Markdown as-is.

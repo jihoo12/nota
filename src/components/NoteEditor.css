@@ -25,6 +25,12 @@
   text-transform: uppercase;
 }
 
+.editor__actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .editor__preview-toggle {
   background: transparent;
   border: 1px solid var(--border);

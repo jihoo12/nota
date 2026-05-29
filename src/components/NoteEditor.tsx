@@ -277,13 +277,15 @@ export function NoteEditor() {
         <div className="editor__meta">
           {new Date(note.updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
         </div>
-        <button
-          className={`editor__preview-toggle${previewMode ? ' editor__preview-toggle--active' : ''}`}
-          type="button"
-          onClick={() => setPreviewMode(isPreview => !isPreview)}
-        >
-          {previewMode ? 'Edit' : 'Preview'}
-        </button>
+        <div className="editor__actions">
+          <button
+            className={`editor__preview-toggle${previewMode ? ' editor__preview-toggle--active' : ''}`}
+            type="button"
+            onClick={() => setPreviewMode(isPreview => !isPreview)}
+          >
+            {previewMode ? 'Edit' : 'Preview'}
+          </button>
+        </div>
       </div>
 
       <input
