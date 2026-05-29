@@ -40,13 +40,24 @@
   padding: 20px 20px 8px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar__logo {
+.sidebar__logo,
+.sidebar__logo-btn {
   font-family: 'Playfair Display', serif;
   font-size: 22px;
   font-weight: 600;
   letter-spacing: .04em;
   color: var(--accent);
 }
+.sidebar__logo-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.sidebar__views{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 10px 0}
+.view-btn{border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 8px}
+.view-btn:hover{background:var(--hover);color:var(--text)}
+.view-btn.active{background:var(--active);border-color:var(--accent);color:var(--text)}
 
 .sidebar__section {
   padding: 14px 14px 8px;
@@ -125,7 +136,7 @@
 .sidebar__actions{display:flex;gap:6px;padding:10px 10px 6px}
 .action-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s}
 .action-btn.note-btn{background:var(--accent);color:var(--accent-fg)}
-.action-btn.group-btn{background:var(--hover);color:var(--text-sec);border:1px solid var(--border)}
+.action-btn.group-btn{background:var(--hover);color:var(--text-secondary);border:1px solid var(--border)}
 .action-btn:hover{opacity:.82}
 
 .tree-group{margin-bottom:1px}
@@ -135,7 +146,7 @@
 .group-caret{flex-shrink:0;width:14px;height:14px;color:var(--text-muted);transition:transform .18s}
 .group-caret.open{transform:rotate(90deg)}
 .group-icon{flex-shrink:0;color:#6b9ec4}
-.group-name{font-size:13px;color:var(--text-sec);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.group-name{font-size:13px;color:var(--text-secondary);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .group-row:hover .group-name{color:var(--text)}
 .group-actions{display:none;gap:2px;align-items:center}
 .group-row:hover .group-actions{display:flex}
@@ -149,7 +160,7 @@
 .note-row.dragging{opacity:.4}
 .note-icon{flex-shrink:0;color:var(--text-muted)}
 .note-row.active .note-icon{color:var(--accent)}
-.note-title{font-size:13px;color:var(--text-sec);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-title{font-size:13px;color:var(--text-secondary);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .note-row.active .note-title{color:var(--text)}
 .note-del{display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
 .note-row:hover .note-del{display:block}

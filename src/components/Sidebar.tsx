@@ -1,19 +1,22 @@
 import { useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { useStore } from '../store/useStore';
 import { Note } from '../types';
 import './Sidebar.css';
 
 type DragState = { type: 'note' | 'group'; id: string; overGroupId: string | null } | null;
+type SetDragState = Dispatch<SetStateAction<DragState>>;
 
-function NoteRow({ note, activeNoteId, dragState, setDragState }: {
+function NoteRow({ note, activeNoteId, dragState, setDragState, onOpenNote }: {
   note: Note; activeNoteId: string | null;
-  dragState: DragState; setDragState: (d: DragState | ((d: DragState) => DragState)) => void;
+  dragState: DragState; setDragState: SetDragState;
+  onOpenNote: (noteId: string) => void;
 }) {
   const { deleteNote, setActiveNote } = useStore();
   return (
     <div
       className={`note-row${activeNoteId === note.id ? ' active' : ''}${dragState?.id === note.id && dragState.type === 'note' ? ' dragging' : ''}`}
-      onClick={() => setActiveNote(note.id)}
+      onClick={() => { setActiveNote(note.id); onOpenNote(note.id); }}
       draggable
       onDragStart={() => setDragState({ type: 'note', id: note.id, overGroupId: null })}
       onDragEnd={() => setDragState(null)}
@@ -28,9 +31,10 @@ function NoteRow({ note, activeNoteId, dragState, setDragState }: {
   );
 }
 
-function GroupTree({ groupId, depth = 0, dragState, setDragState }: {
+function GroupTree({ groupId, depth = 0, dragState, setDragState, onOpenNote }: {
   groupId: string; depth?: number;
-  dragState: DragState; setDragState: (d: DragState | ((d: DragState) => DragState)) => void;
+  dragState: DragState; setDragState: SetDragState;
+  onOpenNote: (noteId: string) => void;
 }) {
   const { notes, groups, activeNoteId, createNote, createGroup, deleteGroup, renameGroup, moveNote, moveGroup } = useStore();
   const [open, setOpen] = useState(true);
@@ -73,7 +77,7 @@ function GroupTree({ groupId, depth = 0, dragState, setDragState }: {
           <span className="group-name">{group.name}</span>
         )}
         <div className="group-actions" onClick={e => e.stopPropagation()}>
-          <button className="g-action" title="New note" onClick={() => { createNote(groupId); setOpen(true); }}>+</button>
+          <button className="g-action" title="New note" onClick={() => { const noteId = createNote(groupId); onOpenNote(noteId); setOpen(true); }}>+</button>
           <button className="g-action" title="New subgroup" onClick={() => { setShowSubGroupInput(true); setOpen(true); }}>📁</button>
           <button className="g-action" title="Rename" onClick={() => { setRenameVal(group.name); setRenaming(true); }}>✎</button>
           <button className="g-action" title="Delete" onClick={() => deleteGroup(groupId)}>×</button>
@@ -88,15 +92,20 @@ function GroupTree({ groupId, depth = 0, dragState, setDragState }: {
                 onBlur={() => setShowSubGroupInput(false)} />
             </div>
           )}
-          {childGroups.map(cg => <GroupTree key={cg.id} groupId={cg.id} depth={depth + 1} dragState={dragState} setDragState={setDragState} />)}
-          {childNotes.map(note => <NoteRow key={note.id} note={note} activeNoteId={activeNoteId} dragState={dragState} setDragState={setDragState} />)}
+          {childGroups.map(cg => <GroupTree key={cg.id} groupId={cg.id} depth={depth + 1} dragState={dragState} setDragState={setDragState} onOpenNote={onOpenNote} />)}
+          {childNotes.map(note => <NoteRow key={note.id} note={note} activeNoteId={activeNoteId} dragState={dragState} setDragState={setDragState} onOpenNote={onOpenNote} />)}
         </div>
       )}
     </div>
   );
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  currentPath: string;
+  onNavigate: (path: string) => void;
+}
+
+export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
   const { notes, groups, activeNoteId, createNote, createGroup, moveNote, moveGroup } = useStore();
   const [open, setSidebarOpen] = useState(true);
   const [showGroupInput, setShowGroupInput] = useState(false);
@@ -112,10 +121,16 @@ export function Sidebar() {
       <button className={`hamburger${open ? ' open' : ''}`} onClick={() => setSidebarOpen(o => !o)}>
         <span /><span /><span />
       </button>
-      <aside className={`sidebar${open ? '' : ' closed'}`}>
-        <div className="sidebar__header"><span className="sidebar__logo">nota</span></div>
+      <aside className={`sidebar${open ? ' sidebar--open' : ' sidebar--closed'}`}>
+        <div className="sidebar__header">
+          <button className="sidebar__logo-btn" onClick={() => onNavigate('/')}>nota</button>
+        </div>
+        <div className="sidebar__views">
+          <button className={`view-btn${currentPath !== '/graph' ? ' active' : ''}`} onClick={() => onNavigate('/')}>Editor</button>
+          <button className={`view-btn${currentPath === '/graph' ? ' active' : ''}`} onClick={() => onNavigate('/graph')}>Graph</button>
+        </div>
         <div className="sidebar__actions">
-          <button className="action-btn note-btn" onClick={() => createNote()}>+ Note</button>
+          <button className="action-btn note-btn" onClick={() => { createNote(); onNavigate('/'); }}>+ Note</button>
           <button className="action-btn group-btn" onClick={() => setShowGroupInput(true)}>+ Group</button>
         </div>
         <nav className="sidebar__nav">
@@ -126,8 +141,8 @@ export function Sidebar() {
                 onBlur={() => setShowGroupInput(false)} />
             </div>
           )}
-          {rootGroups.map(g => <GroupTree key={g.id} groupId={g.id} dragState={dragState} setDragState={setDragState as any} />)}
-          {rootNotes.map(note => <NoteRow key={note.id} note={note} activeNoteId={activeNoteId} dragState={dragState} setDragState={setDragState as any} />)}
+          {rootGroups.map(g => <GroupTree key={g.id} groupId={g.id} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
+          {rootNotes.map(note => <NoteRow key={note.id} note={note} activeNoteId={activeNoteId} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
           {(rootGroups.length > 0 || rootNotes.length > 0) && (
             <div className={`root-drop${isRootDragOver ? ' drag-over' : ''}`}
               onDrop={e => { e.preventDefault(); if (!dragState) return; if (dragState.type === 'note') moveNote(dragState.id, null); if (dragState.type === 'group') moveGroup(dragState.id, null); setDragState(null); }}

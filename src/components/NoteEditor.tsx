@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '../store/useStore';
-import { Note } from '../types';
+import { createMention, MentionKind, parseMentionToken, splitMentionText } from '../utils/mentions';
 import './NoteEditor.css';
 
 interface MentionSuggestion {
   id: string;
-  title: string;
+  kind: MentionKind;
+  label: string;
 }
 
 export function NoteEditor() {
-  const { notes, activeNoteId, updateNote } = useStore();
+  const { notes, groups, activeNoteId, updateNote } = useStore();
   const note = notes.find(n => n.id === activeNoteId) ?? null;
 
   const titleRef = useRef<HTMLInputElement>(null);
@@ -22,8 +23,13 @@ export function NoteEditor() {
   const [mentionCursor, setMentionCursor] = useState(0);
 
   const suggestions: MentionSuggestion[] = mentionOpen
-    ? notes
-        .filter(n => n.id !== activeNoteId && n.title.toLowerCase().includes(mentionQuery.toLowerCase()))
+    ? [
+        ...notes
+          .filter(n => n.id !== activeNoteId)
+          .map(n => ({ id: n.id, kind: 'note' as const, label: n.title || 'Untitled' })),
+        ...groups.map(g => ({ id: g.id, kind: 'group' as const, label: g.name || 'Untitled group' })),
+      ]
+        .filter(item => item.label.toLowerCase().includes(mentionQuery.toLowerCase()))
         .slice(0, 6)
     : [];
 
@@ -58,7 +64,7 @@ export function NoteEditor() {
     }
   }, [note, updateNote]);
 
-  const insertMention = useCallback((target: Note) => {
+  const insertMention = useCallback((target: MentionSuggestion) => {
     const ta = contentRef.current;
     if (!ta || !note) return;
     const val = ta.value;
@@ -67,12 +73,13 @@ export function NoteEditor() {
     const atIdx = textBefore.lastIndexOf('@');
     const before = val.slice(0, atIdx);
     const after = val.slice(cursor);
-    const newVal = `${before}[[${target.title}]]${after}`;
+    const mention = createMention(target.kind, target.label);
+    const newVal = `${before}${mention}${after}`;
     updateNote(note.id, { content: newVal });
     setMentionOpen(false);
     setTimeout(() => {
       ta.focus();
-      const pos = (before + `[[${target.title}]]`).length;
+      const pos = (before + mention).length;
       ta.setSelectionRange(pos, pos);
     }, 0);
   }, [note, updateNote]);
@@ -87,8 +94,7 @@ export function NoteEditor() {
       setMentionCursor(c => (c - 1 + suggestions.length) % suggestions.length);
     } else if (e.key === 'Enter' || e.key === 'Tab') {
       e.preventDefault();
-      const target = notes.find(n => n.id === suggestions[mentionCursor].id);
-      if (target) insertMention(target);
+      insertMention(suggestions[mentionCursor]);
     } else if (e.key === 'Escape') {
       setMentionOpen(false);
     }
@@ -98,9 +104,14 @@ export function NoteEditor() {
 
   // Render content with highlighted [[mentions]]
   const renderContent = (text: string) => {
-    return text.split(/(\[\[.*?\]\])/g).map((part, i) => {
-      if (/^\[\[.*\]\]$/.test(part)) {
-        return <mark key={i} className="mention-chip">{part.slice(2, -2)}</mark>;
+    return splitMentionText(text).map((part, i) => {
+      const mention = parseMentionToken(part);
+      if (mention) {
+        return (
+          <mark key={i} className={`mention-chip mention-chip--${mention.kind}`}>
+            {mention.kind}:{mention.label}
+          </mark>
+        );
       }
       return part;
     });
@@ -128,9 +139,10 @@ export function NoteEditor() {
           value={note.content}
           onChange={handleContentChange}
           onKeyDown={handleContentKeyDown}
-          placeholder={"Start writing...\n\nType @ to mention another note."}
+          placeholder={"Start writing...\n\nType @ to mention a note or group."}
           spellCheck={false}
         />
+        <div className="editor__preview" aria-hidden="true">{renderContent(note.content)}</div>
 
         {/* Mention dropdown */}
         {mentionOpen && suggestions.length > 0 && (
@@ -140,17 +152,17 @@ export function NoteEditor() {
           >
             {suggestions.map((s, i) => (
               <div
-                key={s.id}
+                key={`${s.kind}:${s.id}`}
                 className={`mention-option ${i === mentionCursor ? 'mention-option--active' : ''}`}
                 onMouseDown={e => {
                   e.preventDefault();
-                  const target = notes.find(n => n.id === s.id);
-                  if (target) insertMention(target);
+                  insertMention(s);
                 }}
               >
-                <span className="mention-option__at">[[</span>
-                {s.title}
-                <span className="mention-option__at">]]</span>
+                <span className={`mention-option__kind mention-option__kind--${s.kind}`}>
+                  {s.kind}
+                </span>
+                <span className="mention-option__label">{s.label}</span>
               </div>
             ))}
           </div>
