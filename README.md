@@ -11,8 +11,8 @@ Nota is a local-first note app for writing connected notes, organizing them into
 - Preview fenced code blocks with Prism.js syntax highlighting.
 - Explore notes and groups in a graph view.
 - Zoom and pan the graph canvas.
-- Open a directory as a group, with Markdown files imported as notes and subdirectories imported as subgroups.
-- Save the opened group back to Markdown files and subgroup directories with Ctrl/Cmd + S.
+- Open a directory as a group, with Markdown files imported as notes and subdirectories imported as groups.
+- Save the opened group back to Markdown files and group directories with Ctrl/Cmd + S.
 - Toggle the sidebar with the hamburger button or `Tab`.
 
 ## Preview Syntax
