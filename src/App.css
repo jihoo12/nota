@@ -3,12 +3,28 @@
   height: 100vh;
   width: 100%;
   overflow: hidden;
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
+    var(--bg);
+  background-size: 28px 28px;
 }
 
 .app__main {
   flex: 1;
   display: flex;
   overflow-y: auto;
-  transition: margin-left 0.25s cubic-bezier(.4,0,.2,1);
-  padding-left: 48px; /* space for hamburger button */
+  padding-left: 64px;
+  transition: padding-left 0.25s cubic-bezier(.4,0,.2,1);
+}
+
+.app:has(.sidebar--open) .app__main {
+  padding-left: 292px;
+}
+
+@media (max-width: 860px) {
+  .app__main,
+  .app:has(.sidebar--open) .app__main {
+    padding-left: 0;
+  }
 }
