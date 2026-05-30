@@ -189,6 +189,74 @@ function sanitizePluginPreviewHtml(html: string) {
   return template.innerHTML;
 }
 
+function createMathElement(value: string, display: boolean) {
+  const html = renderLatex(value, display);
+  if (!html) {
+    return document.createTextNode(`${display ? '$$' : '$'}${value}${display ? '$$' : '$'}`);
+  }
+
+  const span = document.createElement('span');
+  span.className = display ? 'math math--display' : 'math math--inline';
+  span.innerHTML = html;
+  return span;
+}
+
+function createMentionElement(token: string) {
+  const mention = parseMentionToken(token);
+  if (!mention) return document.createTextNode(token);
+
+  const mark = document.createElement('mark');
+  mark.className = `mention-chip mention-chip--${mention.kind}`;
+  mark.textContent = `${mention.kind}:${mention.label}`;
+  return mark;
+}
+
+function renderEnhancedTextNodes(value: string) {
+  const nodes: Node[] = [];
+
+  splitMentionText(value).forEach(part => {
+    if (!part) return;
+
+    if (parseMentionToken(part)) {
+      nodes.push(createMentionElement(part));
+      return;
+    }
+
+    splitMathText(part).forEach(mathPart => {
+      if (mathPart.kind === 'text') {
+        nodes.push(document.createTextNode(mathPart.value));
+        return;
+      }
+
+      nodes.push(createMathElement(mathPart.value, mathPart.display));
+    });
+  });
+
+  return nodes;
+}
+
+function enhancePluginPreviewHtml(html: string) {
+  const template = document.createElement('template');
+  template.innerHTML = sanitizePluginPreviewHtml(html);
+
+  const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    const parent = node.parentElement;
+    if (!parent || ['CODE', 'PRE'].includes(parent.tagName)) continue;
+    if (!/(\$\S|(?:\[\[(?:note|group):[^\]]+\]\]))/.test(node.nodeValue ?? '')) continue;
+    textNodes.push(node);
+  }
+
+  textNodes.forEach(node => {
+    node.replaceWith(...renderEnhancedTextNodes(node.nodeValue ?? ''));
+  });
+
+  return template.innerHTML;
+}
+
 export function NoteEditor() {
   const { notes, groups, activeNoteId, updateNote } = useStore();
   const {
@@ -337,13 +405,13 @@ export function NoteEditor() {
         });
 
         if (typeof html === 'string' && html.trim()) {
-          const sanitizedHtml = sanitizePluginPreviewHtml(html);
+          const enhancedHtml = enhancePluginPreviewHtml(html);
 
           return [
             <div
               key={`${renderer.pluginId}:${renderer.id}`}
               className="editor__plugin-preview"
-              dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+              dangerouslySetInnerHTML={{ __html: enhancedHtml }}
             />,
           ];
         }
