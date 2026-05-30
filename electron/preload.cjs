@@ -4,4 +4,6 @@ contextBridge.exposeInMainWorld('nota', {
   platform: process.platform,
   openMarkdownDirectory: () => ipcRenderer.invoke('group:openMarkdownDirectory'),
   saveMarkdownDirectory: (group) => ipcRenderer.invoke('group:saveMarkdownDirectory', group),
+  openPluginDirectory: () => ipcRenderer.invoke('plugin:openDirectory'),
+  loadPlugins: (folderPath) => ipcRenderer.invoke('plugin:loadDirectory', folderPath),
 });

@@ -46,6 +46,23 @@ declare global {
         savedNotes?: Array<{ id: string; fileName: string }>;
         savedGroups?: Array<{ id: string; folderName: string }>;
       }>;
+      openPluginDirectory: () => Promise<{
+        canceled: boolean;
+        folderPath?: string;
+      }>;
+      loadPlugins: (folderPath: string) => Promise<{
+        plugins: Array<{
+          id: string;
+          name: string;
+          version: string;
+          description: string;
+          source: string;
+        }>;
+        errors: Array<{
+          folderName: string;
+          message: string;
+        }>;
+      }>;
     };
   }
 }

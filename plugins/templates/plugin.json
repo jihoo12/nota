@@ -1,0 +1,7 @@
+{
+  "id": "templates",
+  "name": "Templates",
+  "version": "1.0.0",
+  "description": "Adds quick starter templates to the editor.",
+  "main": "index.js"
+}

@@ -13,6 +13,7 @@ Nota is a local-first note app for writing connected notes, organizing them into
 - Zoom and pan the graph canvas.
 - Open a directory as a group, with Markdown files imported as notes and subdirectories imported as groups.
 - Save the opened group back to Markdown files and group directories with Ctrl/Cmd + S.
+- Load trusted local editor plugins from a plugin folder.
 - Toggle the sidebar with the hamburger button or `Tab`.
 
 ## Preview Syntax
@@ -58,6 +59,57 @@ Controls:
 - Use Ctrl/Command + wheel to zoom.
 - Hold the middle mouse button and drag to pan.
 - Click a note node to open it.
+
+## Plugins
+
+Nota supports trusted local JavaScript plugins for editor actions and status text.
+Open the Plugins activity in the sidebar, choose a folder containing plugin subfolders, then enable the plugins you want.
+
+This repository includes sample plugins in `plugins/`:
+
+- `word-count` shows word and character counts for the active note.
+- `templates` adds Daily and Meeting template actions to the editor.
+
+Each plugin subfolder needs a `plugin.json` file:
+
+```json
+{
+  "id": "word-count",
+  "name": "Word Count",
+  "version": "1.0.0",
+  "description": "Shows word and character counts for the active note.",
+  "main": "index.js"
+}
+```
+
+The `main` file registers an activation function:
+
+```js
+notaPlugin.register({
+  activate(ctx) {
+    const dispose = ctx.events.onNoteChange((note) => {
+      ctx.ui.setStatus(note ? `${note.content.split(/\s+/).filter(Boolean).length} words` : '');
+    });
+
+    ctx.ui.registerEditorAction({
+      id: 'insert-template',
+      label: 'Template',
+      run: () => ctx.editor.insertText('# New Note\n\n'),
+    });
+
+    ctx.ui.registerPreviewRenderer({
+      id: 'template-preview',
+      render: (note) => note.content.startsWith('# New Note')
+        ? '<article class="template-preview"><h2>New Note</h2></article>'
+        : null,
+    });
+
+    return dispose;
+  },
+});
+```
+
+Preview renderers return an HTML string for notes they handle, or `null` to let Nota use the built-in preview. Because local plugins are trusted, plugin preview HTML is rendered directly in the preview pane.
 
 ## Getting Started
 

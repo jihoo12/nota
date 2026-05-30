@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Note, Group } from '../types';
+import { Note, Group, LoadedPlugin, PluginLoadError } from '../types';
 
 export interface MarkdownNoteImport {
   title: string;
@@ -23,6 +23,11 @@ interface Store {
   activeNoteId: string | null;
   openedGroupId: string | null;
   openedFolderPath: string | null;
+  pluginFolderPath: string | null;
+  plugins: LoadedPlugin[];
+  enabledPluginIds: string[];
+  pluginErrors: PluginLoadError[];
+  pluginRuntimeErrors: PluginLoadError[];
 
   createNote: (groupId?: string | null) => string;
   updateNote: (id: string, patch: Partial<Pick<Note, 'title' | 'content'>>) => void;
@@ -39,6 +44,11 @@ interface Store {
 
   openMarkdownGroup: (folderPath: string, importedGroup: MarkdownGroupImport) => void;
   closeMarkdownGroup: () => void;
+
+  setPluginFolderPath: (folderPath: string | null) => void;
+  setPluginLoadResult: (plugins: LoadedPlugin[], errors: PluginLoadError[]) => void;
+  setPluginRuntimeErrors: (errors: PluginLoadError[]) => void;
+  togglePlugin: (pluginId: string) => void;
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -62,6 +72,11 @@ export const useStore = create<Store>()(
       activeNoteId: null,
       openedGroupId: null,
       openedFolderPath: null,
+      pluginFolderPath: null,
+      plugins: [],
+      enabledPluginIds: [],
+      pluginErrors: [],
+      pluginRuntimeErrors: [],
 
       createNote: (groupId = null) => {
         const id = uid();
@@ -176,6 +191,24 @@ export const useStore = create<Store>()(
           openedFolderPath: null,
         };
       }),
+
+      setPluginFolderPath: (folderPath) => set({ pluginFolderPath: folderPath }),
+      setPluginLoadResult: (plugins, errors) => set(s => {
+        const pluginIds = new Set(plugins.map(plugin => plugin.id));
+
+        return {
+          plugins,
+          pluginErrors: errors,
+          pluginRuntimeErrors: [],
+          enabledPluginIds: s.enabledPluginIds.filter(pluginId => pluginIds.has(pluginId)),
+        };
+      }),
+      setPluginRuntimeErrors: (pluginRuntimeErrors) => set({ pluginRuntimeErrors }),
+      togglePlugin: (pluginId) => set(s => ({
+        enabledPluginIds: s.enabledPluginIds.includes(pluginId)
+          ? s.enabledPluginIds.filter(id => id !== pluginId)
+          : [...s.enabledPluginIds, pluginId],
+      })),
     }),
     { name: 'nota-storage' }
   )

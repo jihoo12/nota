@@ -18,6 +18,7 @@ import 'prismjs/components/prism-rust';
 import 'prismjs/components/prism-agda';
 import 'katex/dist/katex.min.css';
 import { useStore } from '../store/useStore';
+import { usePluginRuntime } from '../plugins/PluginRuntime';
 import { createMention, MentionKind, parseMentionToken, splitMentionText } from '../utils/mentions';
 import './NoteEditor.css';
 
@@ -135,6 +136,12 @@ function highlightCode(code: string, language: string) {
 
 export function NoteEditor() {
   const { notes, groups, activeNoteId, updateNote } = useStore();
+  const {
+    actions: pluginActions,
+    previewRenderers,
+    statuses: pluginStatuses,
+    registerEditorBridge,
+  } = usePluginRuntime();
   const note = notes.find(n => n.id === activeNoteId) ?? null;
 
   const titleRef = useRef<HTMLInputElement>(null);
@@ -146,6 +153,43 @@ export function NoteEditor() {
   const [mentionPos, setMentionPos] = useState({ top: 0, left: 0 });
   const [mentionCursor, setMentionCursor] = useState(0);
   const [previewMode, setPreviewMode] = useState(false);
+
+  useEffect(() => {
+    registerEditorBridge({
+      insertText: (text) => {
+        if (!note) return;
+
+        const textarea = contentRef.current;
+        const start = textarea?.selectionStart ?? note.content.length;
+        const end = textarea?.selectionEnd ?? start;
+        const nextContent = `${note.content.slice(0, start)}${text}${note.content.slice(end)}`;
+        const nextCursor = start + text.length;
+
+        updateNote(note.id, { content: nextContent });
+        window.setTimeout(() => {
+          textarea?.focus();
+          textarea?.setSelectionRange(nextCursor, nextCursor);
+        }, 0);
+      },
+      replaceSelection: (text) => {
+        if (!note) return;
+
+        const textarea = contentRef.current;
+        const start = textarea?.selectionStart ?? note.content.length;
+        const end = textarea?.selectionEnd ?? note.content.length;
+        const nextContent = `${note.content.slice(0, start)}${text}${note.content.slice(end)}`;
+        const nextCursor = start + text.length;
+
+        updateNote(note.id, { content: nextContent });
+        window.setTimeout(() => {
+          textarea?.focus();
+          textarea?.setSelectionRange(nextCursor, nextCursor);
+        }, 0);
+      },
+    });
+
+    return () => registerEditorBridge(null);
+  }, [note, registerEditorBridge, updateNote]);
 
   const suggestions: MentionSuggestion[] = mentionOpen
     ? [
@@ -229,6 +273,28 @@ export function NoteEditor() {
 
   // Render content with highlighted [[mentions]], KaTeX math, and Prism code blocks.
   const renderContent = (text: string) => {
+    for (const renderer of previewRenderers) {
+      try {
+        const html = renderer.render({
+          id: note.id,
+          title: note.title,
+          content: text,
+        });
+
+        if (typeof html === 'string' && html.trim()) {
+          return [
+            <div
+              key={`${renderer.pluginId}:${renderer.id}`}
+              className="editor__plugin-preview"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />,
+          ];
+        }
+      } catch {
+        // A plugin preview renderer should never break the built-in preview.
+      }
+    }
+
     return splitMentionText(text).flatMap((part, i) => {
       const mention = parseMentionToken(part);
       if (mention) {
@@ -275,9 +341,22 @@ export function NoteEditor() {
     <div className="editor">
       <div className="editor__topbar">
         <div className="editor__meta">
-          {new Date(note.updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
+          <span>{new Date(note.updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          {pluginStatuses.map(status => (
+            <span key={status} className="editor__plugin-status">{status}</span>
+          ))}
         </div>
         <div className="editor__actions">
+          {pluginActions.map(action => (
+            <button
+              key={`${action.pluginId}:${action.id}`}
+              className="editor__plugin-action"
+              type="button"
+              onClick={() => action.run()}
+            >
+              {action.label}
+            </button>
+          ))}
           <button
             className={`editor__preview-toggle${previewMode ? ' editor__preview-toggle--active' : ''}`}
             type="button"

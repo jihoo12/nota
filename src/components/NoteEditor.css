@@ -18,11 +18,21 @@
 }
 
 .editor__meta {
+  align-items: center;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   letter-spacing: .06em;
   text-transform: uppercase;
+}
+
+.editor__plugin-status {
+  border-left: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding-left: 8px;
 }
 
 .editor__actions {
@@ -31,7 +41,8 @@
   gap: 8px;
 }
 
-.editor__preview-toggle {
+.editor__preview-toggle,
+.editor__plugin-action {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -44,6 +55,7 @@
 }
 
 .editor__preview-toggle:hover,
+.editor__plugin-action:hover,
 .editor__preview-toggle--active {
   background: var(--active);
   border-color: rgba(196,169,107,0.45);
@@ -103,6 +115,77 @@
 
 .editor__preview-placeholder {
   color: var(--text-muted);
+}
+
+.editor__plugin-preview {
+  white-space: normal;
+}
+
+.template-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.template-preview__header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+}
+
+.template-preview__eyebrow {
+  color: var(--accent);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.template-preview__title {
+  color: var(--text);
+  font-family: 'Playfair Display', serif;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.template-preview__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.template-preview__section {
+  background: rgba(20,20,23,0.54);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 96px;
+  padding: 14px;
+}
+
+.template-preview__section-title {
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.template-preview__list {
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  gap: 7px;
+  line-height: 1.45;
+  list-style-position: inside;
+}
+
+.template-preview__empty {
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
 }
 
 .mention-chip {

@@ -29,6 +29,68 @@ function parseMarkdownNote(fileName, content) {
   };
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function cleanPluginString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+async function readLocalPlugins(folderPath) {
+  const entries = await fs.readdir(folderPath, { withFileTypes: true });
+  const directoryEntries = entries
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const plugins = [];
+  const errors = [];
+
+  for (const entry of directoryEntries) {
+    const pluginFolderPath = path.join(folderPath, entry.name);
+    const manifestPath = path.join(pluginFolderPath, 'plugin.json');
+
+    try {
+      const rawManifest = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(rawManifest);
+
+      if (!isPlainObject(manifest)) {
+        throw new Error('plugin.json must contain an object.');
+      }
+
+      const id = cleanPluginString(manifest.id);
+      const name = cleanPluginString(manifest.name);
+      const version = cleanPluginString(manifest.version);
+      const description = cleanPluginString(manifest.description);
+      const main = cleanPluginString(manifest.main);
+
+      if (!id || !name || !version || !main) {
+        throw new Error('plugin.json requires id, name, version, and main.');
+      }
+
+      if (path.isAbsolute(main)) {
+        throw new Error('main must be a relative file path.');
+      }
+
+      const mainPath = path.resolve(pluginFolderPath, main);
+      const relativeMainPath = path.relative(pluginFolderPath, mainPath);
+
+      if (relativeMainPath.startsWith('..') || path.isAbsolute(relativeMainPath)) {
+        throw new Error('main must stay inside the plugin folder.');
+      }
+
+      const source = await fs.readFile(mainPath, 'utf8');
+      plugins.push({ id, name, version, description, source });
+    } catch (error) {
+      errors.push({
+        folderName: entry.name,
+        message: error instanceof Error ? error.message : 'Failed to load plugin.',
+      });
+    }
+  }
+
+  return { plugins, errors };
+}
+
 function toMarkdown(note) {
   return typeof note?.content === 'string' ? note.content : '';
 }
@@ -292,6 +354,41 @@ app.whenReady().then(() => {
     await saveMarkdownGroup(folderPath, rootGroup, groupByParentId, notesByGroupId, savedNotes, savedGroups);
 
     return { canceled: false, folderPath, savedNotes, savedGroups };
+  });
+
+  ipcMain.handle('plugin:openDirectory', async (event) => {
+    const browserWindow = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(browserWindow, {
+      title: 'Open plugin folder',
+      properties: ['openDirectory'],
+    });
+
+    if (result.canceled || !result.filePaths[0]) {
+      return { canceled: true };
+    }
+
+    return {
+      canceled: false,
+      folderPath: result.filePaths[0],
+    };
+  });
+
+  ipcMain.handle('plugin:loadDirectory', async (_event, folderPath) => {
+    if (typeof folderPath !== 'string' || !folderPath.trim()) {
+      return { plugins: [], errors: [{ folderName: 'Plugins', message: 'No plugin folder selected.' }] };
+    }
+
+    try {
+      return await readLocalPlugins(folderPath);
+    } catch (error) {
+      return {
+        plugins: [],
+        errors: [{
+          folderName: path.basename(folderPath) || 'Plugins',
+          message: error instanceof Error ? error.message : 'Failed to read plugin folder.',
+        }],
+      };
+    }
   });
 
   createWindow();

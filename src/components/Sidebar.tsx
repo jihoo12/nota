@@ -105,6 +105,131 @@ interface SidebarProps {
   onNavigate: (path: string) => void;
 }
 
+function PluginsPanel() {
+  const {
+    pluginFolderPath,
+    plugins,
+    enabledPluginIds,
+    pluginErrors,
+    pluginRuntimeErrors,
+    setPluginFolderPath,
+    setPluginLoadResult,
+    togglePlugin,
+  } = useStore();
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  const loadPluginFolder = async (folderPath: string) => {
+    if (!window.nota?.loadPlugins) return;
+
+    setStatus('loading');
+
+    try {
+      const result = await window.nota.loadPlugins(folderPath);
+      setPluginLoadResult(result.plugins, result.errors);
+      setStatus('idle');
+    } catch {
+      setPluginLoadResult([], [{ folderName: 'Plugins', message: 'Failed to load plugin folder.' }]);
+      setStatus('error');
+      window.setTimeout(() => setStatus('idle'), 1800);
+    }
+  };
+
+  const handleChooseFolder = async () => {
+    if (!window.nota?.openPluginDirectory || status === 'loading') return;
+
+    setStatus('loading');
+
+    try {
+      const result = await window.nota.openPluginDirectory();
+      if (!result.canceled && result.folderPath) {
+        setPluginFolderPath(result.folderPath);
+        await loadPluginFolder(result.folderPath);
+      } else {
+        setStatus('idle');
+      }
+    } catch {
+      setStatus('error');
+      window.setTimeout(() => setStatus('idle'), 1800);
+    }
+  };
+
+  const handleReload = () => {
+    if (pluginFolderPath) {
+      loadPluginFolder(pluginFolderPath);
+    }
+  };
+
+  const allErrors = [...pluginErrors, ...pluginRuntimeErrors];
+
+  return (
+    <div className="plugins-panel">
+      <div className="plugins-panel__header">
+        <div>
+          <h2 className="plugins-panel__title">Plugins</h2>
+          <p className="plugins-panel__subtitle">Trusted local editor extensions</p>
+        </div>
+      </div>
+      <div className="plugins-panel__actions">
+        <button
+          className="plugins-panel__button plugins-panel__button--primary"
+          disabled={!window.nota?.openPluginDirectory || status === 'loading'}
+          onClick={handleChooseFolder}
+          type="button"
+        >
+          {status === 'loading' ? 'Loading' : 'Folder'}
+        </button>
+        <button
+          className="plugins-panel__button"
+          disabled={!pluginFolderPath || status === 'loading'}
+          onClick={handleReload}
+          type="button"
+        >
+          Reload
+        </button>
+      </div>
+      {pluginFolderPath && (
+        <div className="plugins-panel__path" title={pluginFolderPath}>{pluginFolderPath}</div>
+      )}
+      <div className="plugins-panel__list">
+        {plugins.map(plugin => {
+          const enabled = enabledPluginIds.includes(plugin.id);
+
+          return (
+            <label key={plugin.id} className={`plugin-card${enabled ? ' plugin-card--enabled' : ''}`}>
+              <input
+                checked={enabled}
+                className="plugin-card__toggle"
+                onChange={() => togglePlugin(plugin.id)}
+                type="checkbox"
+              />
+              <span className="plugin-card__body">
+                <span className="plugin-card__name">{plugin.name}</span>
+                <span className="plugin-card__version">v{plugin.version}</span>
+                {plugin.description && <span className="plugin-card__description">{plugin.description}</span>}
+              </span>
+            </label>
+          );
+        })}
+        {plugins.length === 0 && (
+          <div className="plugins-panel__empty">
+            Choose a folder containing plugin subfolders.
+          </div>
+        )}
+      </div>
+      {allErrors.length > 0 && (
+        <div className="plugins-panel__errors">
+          {allErrors.map((error, index) => (
+            <div key={`${error.folderName}:${index}`} className="plugins-panel__error">
+              <span className="plugins-panel__error-title">{error.folderName}</span>
+              <span>{error.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
   const {
     notes,
@@ -124,6 +249,7 @@ export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
   const rootGroups = groups.filter(g => g.parentGroupId === null);
   const rootNotes = notes.filter(n => n.groupId === null);
   const isRootDragOver = dragState?.overGroupId === 'root';
+  const isPlugins = currentPath === '/plugins';
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -172,10 +298,10 @@ export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
       <aside className={`sidebar${open ? ' sidebar--open' : ' sidebar--closed'}`}>
         <div className="sidebar__activity" aria-label="Workspace views">
           <button
-            className={`activity-btn${currentPath !== '/graph' ? ' active' : ''}`}
+            className={`activity-btn${currentPath !== '/graph' && !isPlugins ? ' active' : ''}`}
             type="button"
             aria-label="Editor"
-            aria-current={currentPath !== '/graph' ? 'page' : undefined}
+            aria-current={currentPath !== '/graph' && !isPlugins ? 'page' : undefined}
             title="Editor"
             onClick={() => onNavigate('/')}
           >
@@ -202,41 +328,60 @@ export function Sidebar({ currentPath, onNavigate }: SidebarProps) {
               <path d="M5.7 4.65 9.8 4.25M4.95 6.5 7.9 10.25M10.55 5.65 9.75 9.75" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
             </svg>
           </button>
+          <button
+            className={`activity-btn${isPlugins ? ' active' : ''}`}
+            type="button"
+            aria-label="Plugins"
+            aria-current={isPlugins ? 'page' : undefined}
+            title="Plugins"
+            onClick={() => onNavigate('/plugins')}
+          >
+            <svg className="activity-btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M5.5 2.5h5v3h3v5h-3v3h-5v-3h-3v-5h3v-3Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+              <path d="M6.5 6.5h3v3h-3z" stroke="currentColor" strokeWidth="1.1"/>
+            </svg>
+          </button>
         </div>
         <div className="sidebar__header">
           <button className="sidebar__logo-btn" onClick={() => onNavigate('/')}>nota</button>
         </div>
-        <div className="sidebar__actions">
-          <button className="action-btn note-btn" onClick={() => { createNote(openedGroupId ?? null); onNavigate('/'); }}>+ Note</button>
-          <button
-            className={`action-btn group-btn${groupActionStatus === 'error' ? ' action-btn--error' : ''}`}
-            disabled={!window.nota?.openMarkdownDirectory || groupActionStatus === 'opening'}
-            onClick={handleOpenGroup}
-            title="Open a directory as a group"
-          >
-            {groupActionStatus === 'opening' ? 'Opening' : groupActionStatus === 'error' ? 'Failed' : 'Open'}
-          </button>
-          <button
-            className="action-btn group-btn"
-            disabled={!openedGroupId}
-            onClick={handleCloseGroup}
-            title="Close the opened group"
-          >
-            Close
-          </button>
-        </div>
-        <nav className="sidebar__nav">
-          {rootGroups.map(g => <GroupTree key={g.id} groupId={g.id} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
-          {rootNotes.map(note => <NoteRow key={note.id} note={note} activeNoteId={activeNoteId} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
-          {(rootGroups.length > 0 || rootNotes.length > 0) && (
-            <div className={`root-drop${isRootDragOver ? ' drag-over' : ''}`}
-              onDrop={e => { e.preventDefault(); if (!dragState) return; if (dragState.type === 'note') moveNote(dragState.id, null); if (dragState.type === 'group') moveGroup(dragState.id, null); setDragState(null); }}
-              onDragOver={e => { e.preventDefault(); setDragState(d => d ? { ...d, overGroupId: 'root' } : d); }}
-              onDragLeave={() => setDragState(d => d ? { ...d, overGroupId: null } : d)}>
-              ↑ drop here to ungroup
+        {isPlugins ? (
+          <PluginsPanel />
+        ) : (
+          <>
+            <div className="sidebar__actions">
+              <button className="action-btn note-btn" onClick={() => { createNote(openedGroupId ?? null); onNavigate('/'); }}>+ Note</button>
+              <button
+                className={`action-btn group-btn${groupActionStatus === 'error' ? ' action-btn--error' : ''}`}
+                disabled={!window.nota?.openMarkdownDirectory || groupActionStatus === 'opening'}
+                onClick={handleOpenGroup}
+                title="Open a directory as a group"
+              >
+                {groupActionStatus === 'opening' ? 'Opening' : groupActionStatus === 'error' ? 'Failed' : 'Open'}
+              </button>
+              <button
+                className="action-btn group-btn"
+                disabled={!openedGroupId}
+                onClick={handleCloseGroup}
+                title="Close the opened group"
+              >
+                Close
+              </button>
             </div>
-          )}
-        </nav>
+            <nav className="sidebar__nav">
+              {rootGroups.map(g => <GroupTree key={g.id} groupId={g.id} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
+              {rootNotes.map(note => <NoteRow key={note.id} note={note} activeNoteId={activeNoteId} dragState={dragState} setDragState={setDragState} onOpenNote={() => onNavigate('/')} />)}
+              {(rootGroups.length > 0 || rootNotes.length > 0) && (
+                <div className={`root-drop${isRootDragOver ? ' drag-over' : ''}`}
+                  onDrop={e => { e.preventDefault(); if (!dragState) return; if (dragState.type === 'note') moveNote(dragState.id, null); if (dragState.type === 'group') moveGroup(dragState.id, null); setDragState(null); }}
+                  onDragOver={e => { e.preventDefault(); setDragState(d => d ? { ...d, overGroupId: 'root' } : d); }}
+                  onDragLeave={() => setDragState(d => d ? { ...d, overGroupId: null } : d)}>
+                  ↑ drop here to ungroup
+                </div>
+              )}
+            </nav>
+          </>
+        )}
       </aside>
     </>
   );

@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { NoteEditor } from './components/NoteEditor';
 import { WelcomePage } from './pages/WelcomePage';
 import { GraphView } from './pages/GraphView';
+import { PluginRuntimeProvider } from './plugins/PluginRuntime';
 import './App.css';
 
 const isFileProtocol = window.location.protocol === 'file:';
@@ -120,11 +121,13 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      <Sidebar currentPath={path} onNavigate={navigate} />
-      <main className="app__main">
-        {isGraph ? <GraphView onOpenNote={openNote} /> : hasActiveNote ? <NoteEditor /> : <WelcomePage />}
-      </main>
-    </div>
+    <PluginRuntimeProvider>
+      <div className="app">
+        <Sidebar currentPath={path} onNavigate={navigate} />
+        <main className="app__main">
+          {isGraph ? <GraphView onOpenNote={openNote} /> : hasActiveNote ? <NoteEditor /> : <WelcomePage />}
+        </main>
+      </div>
+    </PluginRuntimeProvider>
   );
 }
