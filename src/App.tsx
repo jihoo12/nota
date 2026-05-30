@@ -24,9 +24,11 @@ export default function App() {
     activeNoteId,
     openedGroupId,
     openedFolderPath,
+    pluginFolderPath,
     setActiveNote,
     setGroupFolderNames,
     setNoteFileNames,
+    setPluginLoadResult,
   } = useStore();
   const [path, setPath] = useState(getCurrentPath);
   const isGraph = path === '/graph';
@@ -47,6 +49,28 @@ export default function App() {
       setActiveNote(null);
     }
   }, [activeNoteId, hasActiveNote, setActiveNote]);
+
+  useEffect(() => {
+    if (!pluginFolderPath || !window.nota?.loadPlugins) return;
+
+    let canceled = false;
+
+    window.nota.loadPlugins(pluginFolderPath)
+      .then(result => {
+        if (!canceled) {
+          setPluginLoadResult(result.plugins, result.errors);
+        }
+      })
+      .catch(() => {
+        if (!canceled) {
+          setPluginLoadResult([], [{ folderName: 'Plugins', message: 'Failed to refresh plugin folder.' }]);
+        }
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [pluginFolderPath, setPluginLoadResult]);
 
   useEffect(() => {
     const getGroupIds = (rootGroupId: string) => {

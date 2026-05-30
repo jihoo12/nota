@@ -87,6 +87,14 @@ The `main` file registers an activation function:
 ```js
 notaPlugin.register({
   activate(ctx) {
+    const disposeStyle = ctx.ui.addStyle(`
+      .template-preview {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+      }
+    `);
+
     const dispose = ctx.events.onNoteChange((note) => {
       ctx.ui.setStatus(note ? `${note.content.split(/\s+/).filter(Boolean).length} words` : '');
     });
@@ -104,12 +112,15 @@ notaPlugin.register({
         : null,
     });
 
-    return dispose;
+    return () => {
+      disposeStyle();
+      dispose();
+    };
   },
 });
 ```
 
-Preview renderers return an HTML string for notes they handle, or `null` to let Nota use the built-in preview. Because local plugins are trusted, plugin preview HTML is rendered directly in the preview pane.
+Preview renderers return an HTML string for notes they handle, or `null` to let Nota use the built-in preview. Because local plugins are trusted, plugin preview HTML and plugin-added CSS are rendered directly in the preview pane.
 
 ## Getting Started
 

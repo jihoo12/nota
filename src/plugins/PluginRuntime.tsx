@@ -47,6 +47,7 @@ interface PluginContext {
     onNoteChange: (listener: (note: PluginNote | null) => void) => () => void;
   };
   ui: {
+    addStyle: (css: string) => () => void;
     setStatus: (text: string) => void;
     registerEditorAction: (action: { id: string; label: string; run: () => void }) => () => void;
     registerPreviewRenderer: (renderer: { id: string; render: (note: PluginNote) => string | null | undefined }) => () => void;
@@ -71,6 +72,16 @@ function getActivePluginNote() {
 
 function sourceUrlFor(pluginId: string) {
   return `nota-plugin-${pluginId.replace(/[^A-Za-z0-9_-]/g, '-')}.js`;
+}
+
+function removePluginStyles(pluginId: string) {
+  document
+    .querySelectorAll('style[data-nota-plugin-id]')
+    .forEach(style => {
+      if (style.getAttribute('data-nota-plugin-id') === pluginId) {
+        style.remove();
+      }
+    });
 }
 
 export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
@@ -107,6 +118,7 @@ export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
     const runtimeErrors: Array<{ folderName: string; message: string }> = [];
 
     enabledPlugins.forEach(plugin => {
+      removePluginStyles(plugin.id);
       const pluginListeners = new Set<(note: PluginNote | null) => void>();
       noteListenersRef.current.set(plugin.id, pluginListeners);
 
@@ -131,6 +143,18 @@ export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
           },
         },
         ui: {
+          addStyle: (css) => {
+            if (typeof css !== 'string' || !css.trim()) {
+              return () => {};
+            }
+
+            const style = document.createElement('style');
+            style.dataset.notaPluginId = plugin.id;
+            style.textContent = css;
+            document.head.appendChild(style);
+
+            return () => style.remove();
+          },
           setStatus: (text) => {
             setStatusesByPlugin(current => ({ ...current, [plugin.id]: text }));
           },
@@ -199,6 +223,7 @@ export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
 
     return () => {
       disposersRef.current.forEach(dispose => dispose());
+      enabledPlugins.forEach(plugin => removePluginStyles(plugin.id));
       disposersRef.current = [];
       noteListenersRef.current.clear();
       setActions([]);

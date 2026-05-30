@@ -290,8 +290,13 @@ export function NoteEditor() {
             />,
           ];
         }
-      } catch {
-        // A plugin preview renderer should never break the built-in preview.
+      } catch (error) {
+        return [
+          <div key={`${renderer.pluginId}:${renderer.id}:error`} className="editor__plugin-preview-error">
+            <strong>Plugin preview failed</strong>
+            <span>{error instanceof Error ? error.message : 'The preview renderer threw an unknown error.'}</span>
+          </div>,
+        ];
       }
     }
 
