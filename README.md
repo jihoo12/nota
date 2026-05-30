@@ -73,12 +73,6 @@ Run the desktop app in development mode:
 npm run dev
 ```
 
-Run only the browser development server:
-
-```bash
-npm run dev:web
-```
-
 Build for production:
 
 ```bash
