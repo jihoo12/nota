@@ -1,5 +1,4 @@
 # Nota
-![Alt Text](screenshot.png)
 Nota is a local-first note app for writing connected notes, organizing them into nested groups, and visualizing relationships in a graph view.
 
 ## Features
