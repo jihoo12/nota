@@ -37,6 +37,10 @@ function cleanPluginString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function isValidPluginId(value) {
+  return /^[a-z0-9][a-z0-9_-]*$/i.test(value);
+}
+
 async function readLocalPlugins(folderPath) {
   const entries = await fs.readdir(folderPath, { withFileTypes: true });
   const directoryEntries = entries
@@ -44,6 +48,7 @@ async function readLocalPlugins(folderPath) {
     .sort((a, b) => a.name.localeCompare(b.name));
   const plugins = [];
   const errors = [];
+  const pluginIds = new Set();
 
   for (const entry of directoryEntries) {
     const pluginFolderPath = path.join(folderPath, entry.name);
@@ -67,6 +72,14 @@ async function readLocalPlugins(folderPath) {
         throw new Error('plugin.json requires id, name, version, and main.');
       }
 
+      if (!isValidPluginId(id)) {
+        throw new Error('plugin id may only contain letters, numbers, underscores, and hyphens.');
+      }
+
+      if (pluginIds.has(id)) {
+        throw new Error(`Duplicate plugin id "${id}".`);
+      }
+
       if (path.isAbsolute(main)) {
         throw new Error('main must be a relative file path.');
       }
@@ -80,6 +93,7 @@ async function readLocalPlugins(folderPath) {
 
       const source = await fs.readFile(mainPath, 'utf8');
       plugins.push({ id, name, version, description, source });
+      pluginIds.add(id);
     } catch (error) {
       errors.push({
         folderName: entry.name,

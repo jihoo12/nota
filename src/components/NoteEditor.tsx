@@ -134,6 +134,61 @@ function highlightCode(code: string, language: string) {
   return Prism.highlight(code, grammar, normalizedLanguage || 'markup');
 }
 
+const pluginPreviewAllowedTags = new Set([
+  'ARTICLE', 'DIV', 'SECTION', 'HEADER', 'FOOTER', 'MAIN', 'ASIDE',
+  'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'SPAN', 'STRONG', 'EM',
+  'B', 'I', 'SMALL', 'UL', 'OL', 'LI', 'DL', 'DT', 'DD', 'BLOCKQUOTE',
+  'PRE', 'CODE', 'HR', 'BR', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD',
+  'A',
+]);
+
+const pluginPreviewAllowedAttributes = new Set([
+  'class', 'title', 'aria-label', 'aria-hidden', 'role',
+]);
+
+function sanitizePluginPreviewHtml(html: string) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+
+  const sanitizeNode = (node: Node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const element = node as HTMLElement;
+    [...element.childNodes].forEach(sanitizeNode);
+
+    if (!pluginPreviewAllowedTags.has(element.tagName)) {
+      element.replaceWith(...element.childNodes);
+      return;
+    }
+
+    [...element.attributes].forEach(attribute => {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim();
+      const isSafeLink = element.tagName === 'A'
+        && name === 'href'
+        && /^(https?:|mailto:)/i.test(value);
+
+      if (name.startsWith('on') || name === 'style') {
+        element.removeAttribute(attribute.name);
+        return;
+      }
+
+      if (isSafeLink) {
+        element.setAttribute('target', '_blank');
+        element.setAttribute('rel', 'noreferrer');
+        return;
+      }
+
+      if (!pluginPreviewAllowedAttributes.has(name)) {
+        element.removeAttribute(attribute.name);
+      }
+    });
+  };
+
+  [...template.content.childNodes].forEach(sanitizeNode);
+  return template.innerHTML;
+}
+
 export function NoteEditor() {
   const { notes, groups, activeNoteId, updateNote } = useStore();
   const {
@@ -204,7 +259,7 @@ export function NoteEditor() {
 
   // Focus title on new note
   useEffect(() => {
-    if (note && !note.title || note?.title === 'Untitled') {
+    if ((note && !note.title) || note?.title === 'Untitled') {
       titleRef.current?.focus();
       titleRef.current?.select();
     }
@@ -282,11 +337,13 @@ export function NoteEditor() {
         });
 
         if (typeof html === 'string' && html.trim()) {
+          const sanitizedHtml = sanitizePluginPreviewHtml(html);
+
           return [
             <div
               key={`${renderer.pluginId}:${renderer.id}`}
               className="editor__plugin-preview"
-              dangerouslySetInnerHTML={{ __html: html }}
+              dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />,
           ];
         }

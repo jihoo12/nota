@@ -51,7 +51,13 @@ interface Store {
   togglePlugin: (pluginId: string) => void;
 }
 
-const uid = () => Math.random().toString(36).slice(2, 10);
+const uid = () => {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return Math.random().toString(36).slice(2, 10);
+};
 
 function collectGroupIds(groups: Group[], rootId: string) {
   const ids = new Set<string>();
